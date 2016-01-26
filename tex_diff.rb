@@ -26,7 +26,7 @@ end
 
 def mark_text(text, before_tag, after_tag, packed_str)
     text.split(packed_str).map{ |s|
-        next if s.split.join == '' # 改行と空白のみの者は除外
+        next s if s.split.join == '' # 改行と空白のみの者は除外
         s.split("\n").map { |s_| # 改行ごとに色つけをする
             if s_ == ''
                 s_
@@ -52,7 +52,20 @@ def main
     prev_body = prev.match(/\\begin{document}.*\\end{document}/m)[0]
     current_body = current.match(/\\begin{document}.*\\end{document}/m)[0]
 
-    pack_rexp = /\\ref{.*?}|\\footnote{.*?}|\\begin{figure}.*?\\end{figure}/m
+    # 保護する文字列パターン
+    pack_rexp = Regexp.new([
+        '\\\\ref{.*?}',
+        '\\\\footnote{.*?}',
+        '\\\\begin{figure}.*?\\\\end{figure}',
+        '\\\\begin{thebibliography}({.*?})?',
+        '\\\\end{thebibliography}',
+        '\\\\section\*?{.*?}',
+        '\\\\renewcommand{.*?}{.*?}',
+        '\\\\newpage',
+        ].join('|'), Regexp::MULTILINE)
+
+    p pack_rexp
+    p pack_rexp_ = /\\ref{.*?}|\\footnote{.*?}|\\begin{figure}.*?\\end{figure}|\\section\*?{.*?}/m
     pack_identifier = 'command'
     prev_body, prev_command_buf = pack 'command', prev_body, pack_rexp
     current_body, current_command_buf = pack 'command', current_body, pack_rexp
