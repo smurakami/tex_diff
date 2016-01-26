@@ -24,6 +24,68 @@ def unpack(identifier, input, buffer)
     output
 end
 
+class Consts
+    K_OPEN_DOLLER_2 = "sMaNflJP4pTOM45x" # $$
+    K_CLOSE_DOLLER_2 = "IUO7zvzeIq38xB3E" # $$
+    K_OPEN_DOLLER = "dZwRCFunwL7CpkXx" # $
+    K_CLOSE_DOLLER = "YHCXwuT87dVzHyqN" # $
+    EQUATION_OPEN_PATTERNS = [
+        K_OPEN_DOLLER,
+        K_OPEN_DOLLER_2
+    ]
+    EQUATION_CLOSE_PATTERNS = [
+        K_CLOSE_DOLLER,
+        K_CLOSE_DOLLER_2
+    ]
+end
+
+def is_equation(text)
+    s = text.split.join
+    Consts::EQUATION_OPEN_PATTERNS.zip(Consts::EQUATION_CLOSE_PATTERNS).each do |open, close|
+        return true if s.match(/^#{open}.*#{close}/)
+    end
+    false
+end
+
+def is_figure(text)
+    s = text.split.join
+    if s.match(/^\\begin{figure}.*\\end{figure}$/)
+        true
+    else
+        false
+    end
+end
+
+def encode_doller(text)
+    flag = true
+    text = text.gsub("$$") do
+        flag_ = flag
+        flag = !flag
+        if flag_
+            Consts::K_OPEN_DOLLER_2
+        else
+            Consts::K_CLOSE_DOLLER_2
+        end
+    end
+    flag = true
+    text = text.gsub("$") do
+        flag_ = flag
+        flag = !flag
+        if flag_
+            Consts::K_OPEN_DOLLER
+        else
+            Consts::K_CLOSE_DOLLER
+        end
+    end
+    text
+end
+
+def decode_doller(text)
+    text = text.gsub(/#{Consts::K_OPEN_DOLLER_2}|#{Consts::K_CLOSE_DOLLER_2}/) { "$$" }
+    text = text.gsub(/#{Consts::K_OPEN_DOLLER}|#{Consts::K_CLOSE_DOLLER}/) { "$" }
+    text
+end
+
 def mark_text(text, before_tag, after_tag, packed_str)
     keeper = 'a5cQCDV5zP'
     (text + keeper).split(packed_str).map{ |s|
@@ -54,21 +116,28 @@ def main
     prev_body = prev.match(/\\begin{document}.*\\end{document}/m)[0]
     current_body = current.match(/\\begin{document}.*\\end{document}/m)[0]
 
+    prev_body = encode_doller(prev_body)
+    current_body = encode_doller(current_body)
+
     # 保護する文字列パターン
     pack_rexp = Regexp.new([
         '\\\\ref{.*?}',
         '\\\\footnote{.*?}',
         '\\\\begin{figure}.*?\\\\end{figure}',
+        '\\\\begin{table}.*?\\\\end{table}',
         '\\\\begin{thebibliography}({.*?})?',
         '\\\\end{thebibliography}',
         '\\\\(sub)*section\*?{.*?}',
         '\\\\renewcommand{.*?}{.*?}',
         '\\\\newpage',
+        '\\\\listoffigures',
+        '\\\\listoftables',
+        "#{Consts::K_OPEN_DOLLER_2}.*?#{Consts::K_CLOSE_DOLLER_2}"
         ].join('|'), Regexp::MULTILINE)
 
     pack_identifier = 'command'
-    prev_body, prev_command_buf = pack 'command', prev_body, pack_rexp
-    current_body, current_command_buf = pack 'command', current_body, pack_rexp
+    prev_body, prev_packed_buf = pack 'command', prev_body, pack_rexp
+    current_body, current_packed_buf = pack 'command', current_body, pack_rexp
 
     current_body = current_body.split("\n")
     prev_body = prev_body.split("\n")
@@ -106,9 +175,30 @@ def main
         bias += plus_str.length - plus.length
     end
 
-    current_body = current_body.join("\n")
+    # 数式などの処理
+    diff = Diff::LCS.diff(prev_packed_buf, current_packed_buf)
+    diff.each do |seq|
+        plus = seq.select{|d| d.action == '+'}
+        plus.each do |d|
+            if is_equation(d.element)
+                eq_begin_re = Regexp.new("^(#{Consts::EQUATION_OPEN_PATTERNS.join('|')})")
+                s = d.element.gsub(eq_begin_re) { $1 + "\\color{blue}" }
+                current_packed_buf[d.position] = s
+            end
+            if is_figure(d.element)
+                s = d.element.gsub(/(\\caption(\[.*?\])?\s*)(?<paren>{([^{}]|\g<paren>)*})/m) do |m|
+                    m.gsub(/(?<paren>{([^{}]|\g<paren>)*})/m) do |m_|
+                        "{\\textcolor{blue}" + m_ + "}"
+                    end
+                end
+                current_packed_buf[d.position] = s
+            end
+        end
+    end
 
-    current_body = unpack 'command', current_body, current_command_buf
+    current_body = current_body.join("\n")
+    current_body = unpack 'command', current_body, current_packed_buf
+    current_body = decode_doller(current_body)
 
     result = current.sub(/\\begin{document}.*\\end{document}/m) { current_body }
     File.open(outfilename, 'w').write(result)
