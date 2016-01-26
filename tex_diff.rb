@@ -24,6 +24,19 @@ def unpack(identifier, input, buffer)
     output
 end
 
+def mark_text(text, before_tag, after_tag, packed_str)
+    text.split(packed_str).map{ |s|
+        next if s.split.join == '' # 改行と空白のみの者は除外
+        s.split("\n").map { |s_| # 改行ごとに色つけをする
+            if s_ == ''
+                s_
+            else
+                before_tag + s_ + after_tag
+            end
+        }.join("\n")
+    }.join(packed_str) # 保護文字列は改変しないようにする．
+end
+
 def main
     if ARGV.length < 2
         puts "Usage: ruby create_diff.rb filename branchname [outfilename]"
@@ -68,18 +81,9 @@ def main
             if cplus.length > 0
                 cplus_pos = cplus.map(&:position)
                 cplus_str = cplus.map(&:element).join
-                tag_counter = 0
-                marked_str = cplus_str.split(pack_mark(pack_identifier)).map{ |s|
-                    next if s.split.join == '' # 改行と空白のみの者は除外
-                    s.split("\n").map { |s_| # 改行ごとに色つけをする
-                        if s_ == ''
-                            s_
-                        else
-                            tag_counter += 1
-                            before_tag + s_ + after_tag
-                        end
-                    }.join("\n")
-                }.join(pack_mark(pack_identifier)) # 保護文字列は改変しないようにする．
+
+                marked_str = mark_text(cplus_str, before_tag, after_tag, pack_mark(pack_identifier))
+
                 plus_str[(cbias+cplus_pos.first)...(cbias+cplus_pos.last+1)] = marked_str
                 cbias += marked_str.length - cplus_str.length
             end
