@@ -25,16 +25,18 @@ def unpack(identifier, input, buffer)
 end
 
 def mark_text(text, before_tag, after_tag, packed_str)
-    text.split(packed_str).map{ |s|
+    keeper = 'a5cQCDV5zP'
+    (text + keeper).split(packed_str).map{ |s|
         next s if s.split.join == '' # 改行と空白のみの者は除外
+        newline_keeper = 'HOnaooxC9F'
         s.split("\n").map { |s_| # 改行ごとに色つけをする
             if s_ == ''
                 s_
             else
                 before_tag + s_ + after_tag
             end
-        }.join("\n")
-    }.join(packed_str) # 保護文字列は改変しないようにする．
+        }.join("\n").gsub(newline_keeper, '')
+    }.join(packed_str).gsub(keeper, '') # 保護文字列は改変しないようにする．
 end
 
 def main
@@ -59,13 +61,11 @@ def main
         '\\\\begin{figure}.*?\\\\end{figure}',
         '\\\\begin{thebibliography}({.*?})?',
         '\\\\end{thebibliography}',
-        '\\\\section\*?{.*?}',
+        '\\\\(sub)*section\*?{.*?}',
         '\\\\renewcommand{.*?}{.*?}',
         '\\\\newpage',
         ].join('|'), Regexp::MULTILINE)
 
-    p pack_rexp
-    p pack_rexp_ = /\\ref{.*?}|\\footnote{.*?}|\\begin{figure}.*?\\end{figure}|\\section\*?{.*?}/m
     pack_identifier = 'command'
     prev_body, prev_command_buf = pack 'command', prev_body, pack_rexp
     current_body, current_command_buf = pack 'command', current_body, pack_rexp
@@ -96,6 +96,9 @@ def main
                 cplus_str = cplus.map(&:element).join
 
                 marked_str = mark_text(cplus_str, before_tag, after_tag, pack_mark(pack_identifier))
+
+                puts marked_str
+                puts '===='
 
                 plus_str[(cbias+cplus_pos.first)...(cbias+cplus_pos.last+1)] = marked_str
                 cbias += marked_str.length - cplus_str.length
