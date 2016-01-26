@@ -97,9 +97,6 @@ def main
 
                 marked_str = mark_text(cplus_str, before_tag, after_tag, pack_mark(pack_identifier))
 
-                puts marked_str
-                puts '===='
-
                 plus_str[(cbias+cplus_pos.first)...(cbias+cplus_pos.last+1)] = marked_str
                 cbias += marked_str.length - cplus_str.length
             end
