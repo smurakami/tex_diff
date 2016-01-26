@@ -31,11 +31,13 @@ class Consts
     K_CLOSE_DOLLER = "YHCXwuT87dVzHyqN" # $
     EQUATION_OPEN_PATTERNS = [
         K_OPEN_DOLLER,
-        K_OPEN_DOLLER_2
+        K_OPEN_DOLLER_2,
+        "\\["
     ]
     EQUATION_CLOSE_PATTERNS = [
         K_CLOSE_DOLLER,
-        K_CLOSE_DOLLER_2
+        K_CLOSE_DOLLER_2,
+        "\\]"
     ]
 end
 
@@ -120,8 +122,9 @@ def main
     current_body = encode_doller(current_body)
 
     # 保護する文字列パターン
-    pack_rexp = Regexp.new([
+    pack_rexp = Regexp.new(([
         '\\\\ref{.*?}',
+        '\\\\cite{.*?}',
         '\\\\footnote{.*?}',
         '\\\\begin{figure}.*?\\\\end{figure}',
         '\\\\begin{table}.*?\\\\end{table}',
@@ -132,8 +135,10 @@ def main
         '\\\\newpage',
         '\\\\listoffigures',
         '\\\\listoftables',
-        "#{Consts::K_OPEN_DOLLER_2}.*?#{Consts::K_CLOSE_DOLLER_2}"
-        ].join('|'), Regexp::MULTILINE)
+        ] + Consts::EQUATION_OPEN_PATTERNS.zip(Consts::EQUATION_CLOSE_PATTERNS).map{ |open, close|
+            "#{open}.*?#{close}"
+        }).join('|'), Regexp::MULTILINE)
+
 
     pack_identifier = 'command'
     prev_body, prev_packed_buf = pack 'command', prev_body, pack_rexp
