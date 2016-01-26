@@ -62,7 +62,6 @@ def main
         minus_str = minus.map(&:element).join("\n")
         plus_str = plus.map(&:element).join("\n")
         plus_pos = seq.select{|d| d.action == '+'}.map(&:position)
-        # next if plus_str.gsub(pack_mark(pack_identifier),"").gsub("\n" ,'') # 図表のみの時とか．改良が必要
         cdiff = Diff::LCS.diff(minus_str, plus_str)
         cdiff.each do |cseq|
             cplus = cseq.select{|c| c.action == "+"}
@@ -72,13 +71,17 @@ def main
                 tag_counter = 0
                 marked_str = cplus_str.split(pack_mark(pack_identifier)).map{ |s|
                     next if s.split.join == '' # 改行と空白のみの者は除外
-                    tag_counter += 1
-                    before_tag + s + after_tag
+                    s.split("\n").map { |s_| # 改行ごとに色つけをする
+                        if s_ == ''
+                            s_
+                        else
+                            tag_counter += 1
+                            before_tag + s_ + after_tag
+                        end
+                    }.join("\n")
                 }.join(pack_mark(pack_identifier)) # 保護文字列は改変しないようにする．
                 plus_str[(cbias+cplus_pos.first)...(cbias+cplus_pos.last+1)] = marked_str
-                # plus_str.insert cbias + cplus_pos.last + 1, after_tag
-                # plus_str.insert cbias + cplus_pos.first, before_tag
-                cbias += (before_tag.length + after_tag.length) * tag_counter
+                cbias += marked_str.length - cplus_str.length
             end
         end
         plus_str = plus_str.split("\n")
