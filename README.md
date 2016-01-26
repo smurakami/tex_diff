@@ -8,9 +8,7 @@
 ruby tex_diff.rb tex_file branch_name out_file
 ```
 
-# Limitation
+# Updates
 
-現在，数式環境内の変更には未対応です．
-数式内にdiffがあると壊れるのでご注意ください．
-後ほど対応予定です
+数式環境，順次対応しています
 
