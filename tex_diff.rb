@@ -24,7 +24,7 @@ def unpack(identifier, input, buffer)
     output
 end
 
-class Consts
+module Consts
     K_OPEN_DOLLER_2 = "sMaNflJP4pTOM45x" # $$
     K_CLOSE_DOLLER_2 = "IUO7zvzeIq38xB3E" # $$
     K_OPEN_DOLLER = "dZwRCFunwL7CpkXx" # $
@@ -32,12 +32,14 @@ class Consts
     EQUATION_OPEN_PATTERNS = [
         K_OPEN_DOLLER,
         K_OPEN_DOLLER_2,
-        "\\["
+        "\\[",
+        "\\\\begin{equation}",
     ]
     EQUATION_CLOSE_PATTERNS = [
         K_CLOSE_DOLLER,
         K_CLOSE_DOLLER_2,
-        "\\]"
+        "\\]",
+        "\\\\end{equation}"
     ]
 end
 
@@ -51,11 +53,7 @@ end
 
 def is_figure(text)
     s = text.split.join
-    if s.match(/^\\begin{figure}.*\\end{figure}$/)
-        true
-    else
-        false
-    end
+    !!s.match(/^\\begin{figure}.*\\end{figure}$/)
 end
 
 def encode_doller(text)
@@ -124,7 +122,9 @@ def main
     # 保護する文字列パターン
     pack_rexp = Regexp.new(([
         '\\\\ref{.*?}',
+        '%.*?\\n',
         '\\\\cite{.*?}',
+        '\\\\label{.*?}',
         '\\\\footnote{.*?}',
         '\\\\begin{figure}.*?\\\\end{figure}',
         '\\\\begin{table}.*?\\\\end{table}',
