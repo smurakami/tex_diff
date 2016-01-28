@@ -110,14 +110,14 @@ def mark_text(text, before_tag, after_tag, packed_str)
   keeper = 'a5cQCDV5zP'
   (text + keeper).split(packed_str).map{ |s|
     next s if s.gsub(Consts::ELEMENTS_KEEPER, '').split.join == '' # 改行と空白のみの者は除外
-    newline_keeper = 'HOnaooxC9F'
-    s.split("\n").map { |s_| # 改行ごとに色つけをする
-      if s_ == ''
+
+    s.lines.map { |s_| # 改行ごとに色つけをする
+      if s_.split.join.gsub(Consts::ELEMENTS_KEEPER, '') == ''
         s_
       else
-        before_tag + s_ + after_tag
+        before_tag + s_.gsub("\n", '') + after_tag + "\n"
       end
-    }.join("\n").gsub(newline_keeper, '')
+    }.join
   }.join(packed_str).gsub(keeper, '') # 保護文字列は改変しないようにする．
 end
 
@@ -190,15 +190,13 @@ def main
         cplus_pos = cplus.map(&:position)
         cplus_str = cplus.map(&:element)
 
-        marked_str = mark_text(cplus_str.join, before_tag, after_tag, pack_mark(pack_identifier)).split('')
-        plus_str[(cbias+cplus_pos.first)...(cbias+cplus_pos.last+1)] = marked_str
+        marked_str = mark_text(cplus_str.join, before_tag, after_tag, pack_mark(pack_identifier))
+        plus_str[(cbias+cplus_pos.first)...(cbias+cplus_pos.last+1)] = marked_str.split('')
         cbias += marked_str.length - cplus_str.length
       end
     end
 
     plus_str = char_array_to_diff_elements(plus_str)
-
-    # p plus_str
 
     current_body[(plus_pos.first+bias)..(plus_pos.last+bias)] = plus_str
     bias += plus_str.length - plus.length
